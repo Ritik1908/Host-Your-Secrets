@@ -34,7 +34,8 @@ mongoose.connect("mongodb://localhost:27017/userDB", {useNewUrlParser: true, use
 
 const userSchema = new mongoose.Schema({
 	email: String,
-	password: String
+	password: String,
+	secret: String
 });
 
 userSchema.plugin(passportLocalMoongoose);
@@ -76,11 +77,15 @@ app.get("/register", function(req, res){
 });
 
 app.get("/secrets", function(req, res){
-	if(req.isAuthenticated()) {
-		res.render("secrets");
-	} else {
-		res.redirect("register");
-	}
+	User.find({"secret": {$ne: null}}, function(err, foundUser){
+		if(err) {
+			console.log(err);
+		} else {
+			if(foundUser) {
+				res.render("secrets", {usersWithSecrets: foundUser});
+			}
+		}
+	})
 })
 
 app.post("/register", function(req, res){
@@ -94,6 +99,30 @@ app.post("/register", function(req, res){
 			});
 		}
 	});
+});
+
+app.get("/submit", function(req, res) {
+	if(req.isAuthenticated()) {
+		res.render("submit");
+	} else {
+		res.redirect("login");
+	}
+});
+
+app.post("/submit", function(req, res) {
+	const submittedSecret = req.body.secret;
+	User.findById(req.user.id, function(err, foundUser){
+		if(err){
+			console.log();
+		} else {
+			if(foundUser) {
+				foundUser.secret = submittedSecret;
+				foundUser.save(function(){
+					res.redirect("/secrets");
+				});
+			}
+		}
+	})
 });
 
 app.get("/logout", function(req, res){
